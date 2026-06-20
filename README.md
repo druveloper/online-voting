@@ -17,6 +17,16 @@ Security considerations have been divided into 4 areas:
 In each of these areas, the plan uses information entropy so that any nefarious activity encounters maximum difficulty, receives minimal reward, and risks potential exposure.
 
 ## I. Manufacturing
+The devices should be manufactured in various securely controlled facilities across the nation. Then shipped to nearby Registration locations, where voters can go to receive a device. Voters do not need to return to the Registration location to cast a vote, only to receive a new device.
+
+When manufactured, the facility will generate the following for each device:
+1. **Device ID** - uniquely identifies the device.
+2. **Data encryption public/private key pair** - for privacy of data going to the device.
+3. **Data signature public/private key pair** - for authentication of data going to the device.
+4. **Registration encryption public/private key pair** - for privacy when registering the device with a voter.
+5. **Registration signature public/private key pair** - for authentication when registering the device with a voter.
+
+Each device will be hard-wired with the Device ID and either the private or public portion of the Data keys and Registration keys. For each public/private key, the remaining counter-part, which does not go into the device, will go into a database within the facility along with the Device ID for association. The database counter-parts are used for server-side communication between the device and servers. For brevity, we can refer to these keys as merely the "Data key" or "Registration key" and infer which ones are used based their given purpose and location (device or server).
 
 ## II. Registration
 
