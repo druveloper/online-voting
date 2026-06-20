@@ -6,6 +6,8 @@ Online voting, if done securely, holds great potential to enable a greater and m
 
 To solve this issue, I propose a kind of USB device which a citizen can plug into their phone/tablet/PC when casting a vote.
 
+![Picture of device](USB-device.png)
+
 Security considerations have been divided into 4 areas:
 1. Manufacturing of the devices.
 2. Registration of each device with a voter.
@@ -14,3 +16,10 @@ Security considerations have been divided into 4 areas:
 
 In each of these areas, the plan uses information entropy so that any nefarious activity encounters maximum difficulty, receives minimal reward, and risks potential exposure.
 
+## I. Manufacturing
+
+## II. Registration
+
+## III. Casting a Vote
+
+### IV. Counting the Votes
