@@ -14,7 +14,7 @@ Security considerations have been divided into 4 areas:
 3. Casting a vote via one of these devices.
 4. Counting the votes from these devices.
 
-In each of these areas, the plan uses information entropy so that any nefarious activity encounters maximum difficulty, receives minimal reward, and risks potential exposure. The plan also assumes a universal data contract used by servers so there are no incompatibilties with communication, authentication, or sharing of data.
+In each of these areas, the plan uses information entropy so that any nefarious activity encounters maximum difficulty, receives minimal reward, and risks potential exposure. The plan also assumes a universal data contract used by servers so there are no incompatibilties with communication, authentication, or sharing of data. In this document, this device will be referred to as "the USB device" or just "the device."
 
 ## I. Manufacturing
 The devices should be manufactured in various securely controlled facilities across the nation. Once made, they are shipped to nearby Registration locations, where voters can go to receive a device. Voters do not need to return to the Registration location to cast a vote, only to receive a new device.
@@ -36,7 +36,10 @@ To register a device, it must be plugged into a Registration Machine. A registra
 1. The machine reads the Device ID from the device.
 2. The machine sends a request to the Registration Database to create a new "unconfirmed" registration for the device.
 3. The Registration Database generates a new record with a public/private key pair -- the "Voter Key."
-4. The private portion of the Voter key is encrypted and signed using the Data Key from the Manufacturer Database.
+    - key for encryption/decryption
+    - key for signature/authentication
+    - random Pepper code (for use with thumb-hash when voting)
+4. The private portion of the Voter key (and Pepper) are encrypted and signed using the Data Key from the Manufacturer Database.
 5. The following is then sent back to the Registration Machine.
     -  Voter key, encrypted and signed by Data Key
 6. The Registration Machine hashes the voter's personal information and generates a random AES key.
@@ -55,35 +58,47 @@ To register a device, it must be plugged into a Registration Machine. A registra
     - AES key, encrypted by Registration key
     - the voter data, encrypted by the AES key and signed by Registration Key
     - thumb-hash, encrypted and signed by Registration Key
-12. The Registration Database decodes the fields and fills out the registration, saving the thumb-hash.
-13. The machine receives confirmation the registration was successful.
+12. The Registration Database decodes the fields and fills out the registration.
+13. The Registration Database saves the peppered hash of the thumb-hash -- HASH(pepper + thumb-hash)
+14. The machine receives confirmation the registration was successful.
 
 ## III. Casting a Vote
 Before casting a vote, the voter must first download a certified app (or program) onto their phone/tablet/PC.
 1. The voter opens the app and connects their USB device.
 2. The voter navigates to the "Election" of choice to see a list of options (candidates/referrendums/etc.)
 3. The voter chooses an option.
-4. The app reads the Device ID from the device and requests a Salt code (for use with the thumb-hash) from the Registration Database.
-5. The Registration Database generates, saves, and returns the Salt code.
-6. The app sends the following to the device, requesting a "vote":
+4. The app reads the Device ID from the device and requests a new Vote Session from the Registration Database.
+5. The Registration Database generates and saves the following temporarily:
+    - Salt code (for use with the thumb-hash)
+    - a hash code -- HASH(salt + x) where x = HASH(pepper + thumb-hash), calculated during registration
+    - a random Confirmation Number
+6. The following is sent back to the app, signed by the database's Voter key.
+    - the Salt code
+    - the Confirmation Number
+7. The app sends the following to the device, requesting a "vote":
     - the "Vote String" -- a human-readable string, such as a candidate's name, based on the option the voter chose
     - the Salt code
-    - a random Confirmation Number
-7. The USB device displays the Vote String and waits for the voter to confirm.
-8. The voter confirms by scanning their thumb print on the device.
-9. The device returns the following:
+    - the Confirmation Number
+8. The USB device displays the Vote String and waits for the voter to confirm.
+9. The voter confirms by scanning their thumb print on the device.
+10. The device returns the following:
     - the Vote String, encrypted and signed by the Voter key
-    - hash of the Salt code combined with the thumb-hash (in order to conceal the actual thumb-hash)
-    - signature of the Confirmation Number, made with the Voter key
-10. The app then sends two separate requests:
-    - a request to the Registration Database with a Vote-Validation token.
-        - the Device ID
-        - Confirmation Number, encrypted and signed by the Voter key
-        - thumb-hash (as received from the device)
-    - a request to a Vote-Counting Database with a a Vote-Counting Token.
+    - a hashed thumb-hash (in order to conceal the actual thumb-hash) -- HASH(salt + HASH(pepper + thumb-hash)) 
+    - device-side signature of the Confirmation Number, made with the Voter key
+11. The app then sends two separate requests:
+    - a request to a Vote-Counting Database with a Vote-Counting Token:
         - the Device ID
         - Confirmation Number (plain text)
         - the Election identifier
         - the Vote String, encrypted and signed by the Voter key
+    - a request to the Registration Database with a Vote-Validation token:
+        - the Device ID
+        - Confirmation Number, encrypted and signed by the device's Voter key
+        - hashed thumb-hash (as received from the device)
+        - the Vote-Counting database address
+12. Once the Registration Database validates the hashed thumb-hash, it removes the temporary data.
+13. The Registration Database then sends the following to the vote-counting database specified:
+    - the Device ID
+    - Confirmation Number (as received from the app -- encrypted and signed by the device's Voter key)
 
 ## IV. Counting the Votes
