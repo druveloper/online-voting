@@ -75,7 +75,7 @@ Before casting a vote, the voter must first download a certified app (or program
 
 The voting process has these security goals in mind:
 1. All goals pertaining to registration security apply.
-2. The app should not be relied on to preserve security mechanisms, such as random number generation or time-keeping.
+2. The app should not be relied on to perform security mechanisms, such as random number generation, time-keeping, hashing, or encryption/decryption.
 3. No malware or other apps should be capable of compromising the end-to-end security between the device and the intended servers.
 4. It should be impossible to count a vote (towards a candidate/referrendum/etc.) without validation by the Registration Database.
 5. Validation of each vote should require the voter's thumb print in a form that is unique from other votes -- (ex: salted hash).
@@ -89,34 +89,45 @@ The voting process has these security goals in mind:
     - Salt code (for use with the thumb-hash)
     - a hash code -- HASH(salt + x) where x = HASH(pepper + thumb-hash), calculated during registration
     - a random Confirmation Number
-6. The following is sent back to the app, signed by the database's Voter key.
-    - the Salt code
-    - the Confirmation Number
-7. The app sends the following to the device, requesting a "vote":
+    - a random AES key
+    - the URL of a "Vote-Counting Database", potentially randomly chosen
+6. The following is sent back to the app:
+    - the URL to a Vote-Counting Database
+    - "Vote Session" token, encrypted and signed by the database's Voter Key:
+        - the Salt code
+        - the Confirmation Number
+        - the AES key
+8. The app sends the following to the device, requesting a "vote":
+    - the Election identifier
     - the "Vote String" -- a human-readable string, such as a candidate's name, based on the option the voter chose
-    - the Salt code
-    - the Confirmation Number
-8. The USB device displays the Vote String and waits for the voter to confirm.
-9. The voter confirms by scanning their thumb print on the device.
-10. The device returns the following:
-    - the Vote String, encrypted and signed by the Voter key
-    - a hashed thumb-hash (in order to conceal the actual thumb-hash) -- HASH(salt + HASH(pepper + thumb-hash)) 
-    - device-side signature of the Confirmation Number, made with the Voter key
-11. The app then sends two separate requests:
-    - a request to a Vote-Counting Database with a Vote-Counting Token:
-        - the Device ID
-        - Confirmation Number (plain text)
+    - the Vote Session token
+9. The USB device validates the Vote Session token via its Voter Key.
+10. The USB device displays the Election identifiier and Vote String and waits for the voter to confirm.
+11. The voter confirms by scanning their thumb print on the device.
+12. The device returns the following:
+    - the Confirmation Number in plain text
+    - a "Vote-Counting Token", encrypted by the AES key:
         - the Election identifier
-        - the Vote String, encrypted and signed by the Voter key
-    - a request to the Registration Database with a Vote-Validation token:
+        - the Vote String
+        - digital signature of all fields, including Confirmation Number, made with the device's Voter Key
+    - a "Vote-Validation Token"
+        - the Confirmation Number
+        - a salted hash of the thumb-hash (in order to conceal the actual thumb-hash) -- HASH(salt + HASH(pepper + thumb-hash))
+        - digital signature of all fields, made with the device's Voter Key
+13. The app then sends two separate requests:
+    - a request to the given Vote-Counting Database:
         - the Device ID
-        - Confirmation Number, encrypted and signed by the device's Voter key
-        - hashed thumb-hash (as received from the device)
-        - the Vote-Counting database address
-12. Once the Registration Database validates the hashed thumb-hash, it removes the temporary data.
-13. The Registration Database then sends the following to the vote-counting database specified:
+        - the Confirmation Number
+        - the Vote-Counting Token, as is
+    - a request to the Registration Database:
+        - the Device ID
+        - the Vote-Validation token, as is
+14. The Registration Database validates the hashed thumb-hash.
+15. The Registration Database then sends the following to the vote-counting database specified:
     - the Device ID
-    - Confirmation Number (as received from the app -- encrypted and signed by the device's Voter key)
-14. Once a vote is counted, a message is sent back to the app.
+    - Confirmation Number
+    - AES key to decrypt
+16. The Registration Database removes the temporary data.
+17. Once a vote is counted, a message is sent back to the app.
 
 ## IV. Counting the Votes
