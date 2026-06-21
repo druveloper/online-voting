@@ -31,13 +31,21 @@ Each device will be hard-wired with the Device ID and either the private or publ
 ## II. Registration
 Each Registration location will have its own "Registration Database" for the voters it registers. In order to securely and efficiently register devices, an additional type of device, which we'll call a "Registration Machine," has to be made and distributed to Registration locations, one machine for each line of people expected. Each machine will have its own client-side certificate and encryption key for communication with the Registration Database. Each machine will also have only enough memory for one voter to be registered, and an idle timer that clears the memory after a certain time limit.
 
+The registration process has these security goals in mind:
+1. The device only allows a new registration if the request can be validated using a hard-wired key.
+2. The device should be given a "Voter key," which can be renewed yearly without requiring any in-person visit.
+3. The device cannot be used to derrive the plain-text of any key, thumbprint hash, or salt/pepper code from the device.
+4. For technological simplicity, the device cannot use random number generation or time-keeping mechanisms.
+5. The Registration Database should not return any keys from the Manufacturer Database.
+6. The Registration Database should not return any keys in plain text.
+
 ### How to Register a Device
 To register a device, it must be plugged into a Registration Machine. A registration staff person can populate the voter's personal information via PC connected to the machine. Then the following can happen:
 1. The machine reads the Device ID from the device.
 2. The machine sends a request to the Registration Database to create a new "unconfirmed" registration for the device.
-3. The Registration Database generates a new record with a public/private key pair -- the "Voter Key."
-    - key for encryption/decryption
-    - key for signature/authentication
+3. The Registration Database generates a new record with a "Voter Key":
+    - key pair for encryption/decryption
+    - key pair for signature/authentication
     - random Pepper code (for use with thumb-hash when voting)
 4. The private portion of the Voter key (and Pepper) are encrypted and signed using the Data Key from the Manufacturer Database.
 5. The following is then sent back to the Registration Machine.
@@ -64,6 +72,15 @@ To register a device, it must be plugged into a Registration Machine. A registra
 
 ## III. Casting a Vote
 Before casting a vote, the voter must first download a certified app (or program) onto their phone/tablet/PC.
+
+The voting process has these security goals in mind:
+1. All goals pertaining to registration security apply.
+2. The app should not be relied on to preserve security mechanisms, such as random number generation or time-keeping.
+3. No malware or other apps should be capable of compromising the end-to-end security between the device and the intended servers.
+4. It should be impossible to count a vote (towards a candidate/referrendum/etc.) without validation by the Registration Database.
+5. Validation of each vote should require the voter's thumb print in a form that is unique from other votes -- (ex: salted hash).
+
+### How to Cast a Vote
 1. The voter opens the app and connects their USB device.
 2. The voter navigates to the "Election" of choice to see a list of options (candidates/referrendums/etc.)
 3. The voter chooses an option.
@@ -100,5 +117,6 @@ Before casting a vote, the voter must first download a certified app (or program
 13. The Registration Database then sends the following to the vote-counting database specified:
     - the Device ID
     - Confirmation Number (as received from the app -- encrypted and signed by the device's Voter key)
+14. Once a vote is counted, a message is sent back to the app.
 
 ## IV. Counting the Votes
