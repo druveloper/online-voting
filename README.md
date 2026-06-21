@@ -34,28 +34,26 @@ Each Registration location will have its own "Registration Database" for the vot
 ### How to Register a Device
 To register a device, it must be plugged into a Registration Machine. A registration staff person can populate the voter's personal information via PC connected to the machine. Then the following can happen:
 1. The machine reads the Device ID from the device.
-2. The machine requests a new "unconfirmed" registration for the device from the Registration Database.
+2. The machine sends a request to the Registration Database to create a new "unconfirmed" registration for the device.
 3. The Registration Database generates a new record with a public/private key pair -- the "Voter Key."
 4. The private portion of the Voter key is encrypted and signed using the Data Key from the Manufacturer Database.
 5. The following is then sent back to the Registration Machine.
     -  Voter key, encrypted and signed by Data Key
-    -  A randomly generated Salt code (for use with thumb print hash)
 6. The Registration Machine hashes the voter's personal information and generates a random AES key.
-7. The Registration Machine sends the following to the device in a request for a new registration:
+7. The Registration Machine sends the following to the device in a request to register a new voter:
     -  hash of voter's personal information
     -  AES key
-    -  Voter key (received from Registration Database)
-    -  Salt code (received from Registration Database)
+    -  Voter key (as received from Registration Database)
 8. The device validates the Voter key and prompts the voter to scan their thumb print.
 9. Once scanned, the thumb print is hashed into a "thumb-hash." The thumb-hash and Voter key are recorded in the device's persistent memory.
 10. The device returns the following:
-    - hash of the Salt code combined with the thumb-hash, signed by Registration Key
+    - the thumb-hash, encrypted and signed by Registration Key
     - signature of voter's personal information, made via Registration Key
     - AES key, encrypted by Registration key
 11. The Registration Machine then sends the following to the Registration Database to "confirm" the registration:
     - AES key, encrypted by Registration key
     - the voter data, encrypted by the AES key and signed by Registration Key
-    - salted hash of thumb-hash, signed by Registration Key
+    - thumb-hash, encrypted and signed by Registration Key
 12. The machine receives confirmation the registration was successful.
 
 ## III. Casting a Vote
