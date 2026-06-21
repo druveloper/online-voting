@@ -51,11 +51,39 @@ To register a device, it must be plugged into a Registration Machine. A registra
     - signature of voter's personal information, made via Registration Key
     - AES key, encrypted by Registration key
 11. The Registration Machine then sends the following to the Registration Database to "confirm" the registration:
+    - the Device ID
     - AES key, encrypted by Registration key
     - the voter data, encrypted by the AES key and signed by Registration Key
     - thumb-hash, encrypted and signed by Registration Key
-12. The machine receives confirmation the registration was successful.
+12. The Registration Database decodes the fields and fills out the registration, saving the thumb-hash.
+13. The machine receives confirmation the registration was successful.
 
 ## III. Casting a Vote
+Before casting a vote, the voter must first download a certified app (or program) onto their phone/tablet/PC.
+1. The voter opens the app and connects their USB device.
+2. The voter navigates to the "Election" of choice to see a list of options (candidates/referrendums/etc.)
+3. The voter chooses an option.
+4. The app reads the Device ID from the device and requests a Salt code (for use with the thumb-hash) from the Registration Database.
+5. The Registration Database generates, saves, and returns the Salt code.
+6. The app sends the following to the device, requesting a "vote":
+    - the "Vote String" -- a human-readable string, such as a candidate's name, based on the option the voter chose
+    - the Salt code
+    - a random Confirmation Number
+7. The USB device displays the Vote String and waits for the voter to confirm.
+8. The voter confirms by scanning their thumb print on the device.
+9. The device returns the following:
+    - the Vote String, encrypted and signed by the Voter key
+    - hash of the Salt code combined with the thumb-hash (in order to conceal the actual thumb-hash)
+    - signature of the Confirmation Number, made with the Voter key
+10. The app then sends two separate requests:
+    - a request to the Registration Database with a Vote-Validation token.
+        - the Device ID
+        - Confirmation Number, encrypted and signed by the Voter key
+        - thumb-hash (as received from the device)
+    - a request to a Vote-Counting Database with a a Vote-Counting Token.
+        - the Device ID
+        - Confirmation Number (plain text)
+        - the Election identifier
+        - the Vote String, encrypted and signed by the Voter key
 
 ## IV. Counting the Votes
