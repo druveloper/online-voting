@@ -31,6 +31,7 @@ Each device will be hard-wired with the Device ID and either the private or publ
 ## II. Registration
 Each Registration location will have its own "Registration Database" for the voters it registers. In order to securely and efficiently register devices, an additional type of device, which we'll call a "Registration Machine," has to be made and distributed to Registration locations, one machine for each line of people expected. Each machine will have its own client-side certificate and encryption key for communication with the Registration Database. Each machine will also have only enough memory for one voter to be registered, and an idle timer that clears the memory after a certain time limit.
 
+### Security Goals
 The registration process has these security goals in mind:
 1. The device only allows a new registration if the request can be validated using a hard-wired key.
 2. The device should be given a "Voter key," which can be renewed yearly without requiring any in-person visit.
@@ -71,14 +72,17 @@ To register a device, it must be plugged into a Registration Machine. A registra
 14. The machine receives confirmation the registration was successful.
 
 ## III. Casting a Vote
-Before casting a vote, the voter must first download a certified app (or program) onto their phone/tablet/PC.
 
+### Security Goals
 The voting process has these security goals in mind:
 1. All goals pertaining to registration security apply.
 2. The app should not be relied on to perform security mechanisms, such as random number generation, time-keeping, hashing, or encryption/decryption.
 3. No malware or other apps should be capable of compromising the end-to-end security between the device and the intended servers.
 4. It should be impossible to count a vote (towards a candidate/referrendum/etc.) without validation by the Registration Database.
 5. Validation of each vote should require the voter's thumb print in a form that is unique from other votes -- (ex: salted hash).
+
+### First Time Opening the App
+Before casting a vote, the voter must first download a certified app (or program) onto their phone/tablet/PC. Then they must open the app and connect their USB device. When opened for the first time, the app will read the Device ID from the device and, using a software-embedded certificate and decription key, download initial data from the Registration Database. This includes voter name and a "hash negative" of a photo taken at registration. Now, whenever the app is opened, it computes a hash of the executable code and uses the hash as a seed to generate pseudo-random data which is added to the "hash negative" to form the original photo. The "hash negative" is computed server-side by performing the same process, only subtracting the pseudo-random data, rather than adding. When the voter sees the photo, they know the hash matches. Furthermore, the app checks the resulting photo for corruption and calculates the Shannon Entropy and does not allow the voter to continue if the value is out of range.
 
 ### How to Cast a Vote
 1. The voter opens the app and connects their USB device.
@@ -104,7 +108,9 @@ The voting process has these security goals in mind:
 9. The USB device validates the Vote Session token via its Voter Key.
 10. The USB device displays the Election identifiier and Vote String and waits for the voter to confirm.
 11. The voter confirms by scanning their thumb print on the device.
-12. The device returns the following:
+12. The device displays a "busy" message -- "Sending vote..."
+13. The device adds a record of the Confirmation Number and Election identifier in its persistent memory.
+14. The device returns the following:
     - the Confirmation Number in plain text
     - a "Vote-Counting Token", encrypted by the AES key:
         - the Election identifier
@@ -114,7 +120,7 @@ The voting process has these security goals in mind:
         - the Confirmation Number
         - a salted hash of the thumb-hash (in order to conceal the actual thumb-hash) -- HASH(salt + HASH(pepper + thumb-hash))
         - digital signature of all fields, made with the device's Voter Key
-13. The app then sends two separate requests:
+15. The app then sends two separate requests:
     - a request to the given Vote-Counting Database:
         - the Device ID
         - the Confirmation Number
@@ -122,12 +128,16 @@ The voting process has these security goals in mind:
     - a request to the Registration Database:
         - the Device ID
         - the Vote-Validation token, as is
-14. The Registration Database validates the hashed thumb-hash.
-15. The Registration Database then sends the following to the vote-counting database specified:
+16. The Registration Database validates the hashed thumb-hash.
+17. The Registration Database then sends the following to the vote-counting database specified:
     - the Device ID
     - Confirmation Number
     - AES key to decrypt
-16. The Registration Database removes the temporary data.
-17. Once a vote is counted, a message is sent back to the app.
+18. The Registration Database removes the temporary data.
+19. The app waits a short amount of time to receive a "Vote-Confirmation token," which can be sent to the USB device to prove the vote was counted:
+    - Confirmation Number
+    - signature of Confirmation Number, made with Voter key on server-side
+20. If the app request times out, a background process checks hourly to notfiy the voter that they voted. The notification will include the Vote-Confirmation token.
+21. When the device receives a Vote-Confirmation token, it displays "You voted!" and the Election identifier corresponding to the Confirmation Number in its persisent memory. The record of the vote is then removed from memory.
 
 ## IV. Counting the Votes
