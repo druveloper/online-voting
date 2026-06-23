@@ -26,7 +26,7 @@ When manufactured, the facility will generate the following for each device:
 4. **Registration encryption public/private key pair** - for privacy when registering the device with a voter.
 5. **Registration signature public/private key pair** - for authentication when registering the device with a voter.
 
-Each device will be hard-wired with the Device ID and either the private or public portion of the Data keys and Registration keys. For each public/private key, the remaining counter-part, which does not go into the device, will go into a database within the facility along with the Device ID for association. The database counter-parts are used for server-side communication between the device and servers. For brevity, we can refer to these keys as merely the "Data key" or "Registration key" and infer which ones are used based their given purpose and location (device or server). The aforementioned database will be called the "Manufacturer Database."
+Each device will be hard-wired with the Device ID and either the private or public portion of the Data keys and Registration keys. For each public/private key, the remaining counter-part, which does not go into the device, will go into a database within the facility along with the Device ID for association. The database counter-parts are used for server-side communication between the device and servers. For brevity, we can refer to these keys as merely the "Data key" or "Registration key" and infer which ones are used based their given purpose and location (device or server). We can also assume that "hybrid" encryption (via encrypted AES key) is used when necessary. The aforementioned database will be called the "Manufacturer Database."
 
 ## II. Registration
 Each Registration location will have its own "Registration Database" for the voters it registers. In order to securely and efficiently register devices, an additional type of device, which we'll call a "Registration Machine," has to be made and distributed to Registration locations, one machine for each line of people expected. Each machine will have its own client-side certificate and encryption key for communication with the Registration Database. Each machine will also have only enough memory for one voter to be registered, and an idle timer that clears the memory after a certain time limit.
@@ -48,7 +48,8 @@ To register a device, it must be plugged into a Registration Machine. A registra
     - key pair for encryption/decryption
     - key pair for signature/authentication
     - random Pepper code (for use with thumb-hash when voting)
-4. The private portion of the Voter key (and Pepper) are encrypted and signed using the Data Key from the Manufacturer Database.
+    - initial value of "Vote Counter" -- a random value that changes after each vote
+4. The private keys, Pepper, and Vote Counter are encrypted and signed using the Data Key from the Manufacturer Database.
 5. The following is then sent back to the Registration Machine.
     -  Voter key, encrypted and signed by Data Key
 6. The Registration Machine hashes the voter's personal information and generates a random AES key.
@@ -88,7 +89,9 @@ Before casting a vote, the voter must first download a certified app (or program
 1. The voter opens the app and connects their USB device.
 2. The voter navigates to the "Election" of choice to see a list of options (candidates/referrendums/etc.)
 3. The voter chooses an option.
-4. The app reads the Device ID from the device and requests a new Vote Session from the Registration Database.
+4. The app reads the following from the device and requests a new Vote Session from the Registration Database:
+    - Device ID
+    - Vote Counter from persistent memory
 5. The Registration Database generates and saves the following temporarily:
     - Salt code (for use with the thumb-hash)
     - a hash code -- HASH(salt + x) where x = HASH(pepper + thumb-hash), calculated during registration
@@ -98,6 +101,7 @@ Before casting a vote, the voter must first download a certified app (or program
 6. The following is sent back to the app:
     - the URL to a Vote-Counting Database
     - "Vote Session" token, encrypted and signed by the database's Voter Key:
+        - the Vote Counter
         - the Salt code
         - the Confirmation Number
         - the AES key
@@ -105,12 +109,13 @@ Before casting a vote, the voter must first download a certified app (or program
     - the Election identifier
     - the "Vote String" -- a human-readable string, such as a candidate's name, based on the option the voter chose
     - the Vote Session token
-9. The USB device validates the Vote Session token via its Voter Key.
-10. The USB device displays the Election identifiier and Vote String and waits for the voter to confirm.
-11. The voter confirms by scanning their thumb print on the device.
-12. The device displays a "busy" message -- "Sending vote..."
-13. The device adds a record of the Confirmation Number and Election identifier in its persistent memory.
-14. The device returns the following:
+9. The USB device validates the Vote Session token via its Voter Key. The token's Vote Counter value must also match the device's internal Vote Counter.
+10. The device "increments" the Vote Counter by computing a hash of the current value and overwriting it in persistent memory.
+11. The device displays the Election identifiier and Vote String and waits for the voter to confirm.
+12. The voter confirms by scanning their thumb print on the device.
+13. The device displays a "busy" message -- "Sending vote..."
+14. The device adds a record of the Confirmation Number and Election identifier in its persistent memory.
+15. The device returns the following:
     - the Confirmation Number in plain text
     - a "Vote-Counting Token", encrypted by the AES key:
         - the Election identifier
@@ -120,7 +125,7 @@ Before casting a vote, the voter must first download a certified app (or program
         - the Confirmation Number
         - a salted hash of the thumb-hash (in order to conceal the actual thumb-hash) -- HASH(salt + HASH(pepper + thumb-hash))
         - digital signature of all fields, made with the device's Voter Key
-15. The app then sends two separate requests:
+16. The app then sends two separate requests:
     - a request to the given Vote-Counting Database:
         - the Device ID
         - the Confirmation Number
@@ -128,16 +133,16 @@ Before casting a vote, the voter must first download a certified app (or program
     - a request to the Registration Database:
         - the Device ID
         - the Vote-Validation token, as is
-16. The Registration Database validates the hashed thumb-hash.
-17. The Registration Database then sends the following to the vote-counting database specified:
+17. The Registration Database validates the hashed thumb-hash.
+18. The Registration Database then sends the following to the vote-counting database specified:
     - the Device ID
     - Confirmation Number
     - AES key to decrypt
-18. The Registration Database removes the temporary data.
-19. The app waits a short amount of time to receive a "Vote-Confirmation token," which can be sent to the USB device to prove the vote was counted:
+19. The Registration Database removes the temporary data.
+20. The app waits a short amount of time to receive a "Vote-Confirmation token," which can be sent to the USB device to prove the vote was counted:
     - Confirmation Number
     - signature of Confirmation Number, made with Voter key on server-side
-20. If the app request times out, a background process checks hourly to notfiy the voter that they voted. The notification will include the Vote-Confirmation token.
-21. When the device receives a Vote-Confirmation token, it displays "You voted!" and the Election identifier corresponding to the Confirmation Number in its persisent memory. The record of the vote is then removed from memory.
+21. If the app request times out, a background process checks hourly to notfiy the voter that they voted. The notification will include the Vote-Confirmation token.
+22. When the device receives a Vote-Confirmation token, it displays "You voted!" and the Election identifier corresponding to the Confirmation Number in its persisent memory. The record of the vote is then removed from memory.
 
 ## IV. Counting the Votes
