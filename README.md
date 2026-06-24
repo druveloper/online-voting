@@ -86,8 +86,25 @@ The voting process has these security goals in mind:
 ### First Time Opening the App
 Before casting a vote, the voter must first download a certified app (or program) onto their phone/tablet/PC. Then they must open the app and connect their USB device. When opened for the first time, the app will read the Device ID from the device and, using a software-embedded certificate and decription key, download initial data from the Registration Database. This includes voter name and a "hash negative" of a photo taken at registration. Now, whenever the app is opened, it computes a hash of the executable code and uses the hash as a seed to generate pseudo-random data which is added to the "hash negative" to form the original photo. The "hash negative" is computed server-side by performing the same process, only subtracting the pseudo-random data, rather than adding. When the voter sees the photo, they know the hash matches. Furthermore, the app checks the resulting photo for corruption and calculates the Shannon Entropy and does not allow the voter to continue if the value is out of range.
 
+### App Validation
+1. When you open the app, it requests a unique App Salt from the USB device.
+2. The device returns the App Salt from persistent memory.
+3. The app requests a Validation Signature from the Registration Database, sending the following:
+    - Device ID
+    - App Salt
+    - App version details, such as iOS, Android, MacOS, PC, Linux, etc...
+4. The Registration Database computes a salted hash of its own copy of the exact app version.
+5. The Registration Database signs the hash with its Voter Key and returns the signature only.
+6. The app must compute a hash of itself.
+7. The app sends the following to the device:
+    - The hash computed by the app
+    - The signature obtained from the Registration Database
+8. The USB device validates the signature, and if valid, displays "App is safe. Scan finger to continue."
+9. The device waits for a successful scan of the thumb print.
+10. The device then hashes the App Salt for next time.
+
 ### How to Cast a Vote
-1. The voter opens the app and connects their USB device.
+1. The voter opens the app and connects their USB device, going through the validation process.
 2. The voter navigates to the "Election" of choice to see a list of options (candidates/referrendums/etc.)
 3. The voter chooses an option.
 4. The app reads the following from the device and requests a new Vote Session from the Registration Database:
