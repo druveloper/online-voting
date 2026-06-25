@@ -109,7 +109,7 @@ One security mechanism involves a "hash negative" of a photo taken at registrati
 10. The device then hashes the App Salt for next time.
 11. The device's voting operations are now unlocked for 1 hour.
 12. The device returns a success message to the app, so it can continue.
-13. If the device in use for longer than 1 hour, or becomes disconnected, the Device Session becomes expired.
+13. If the device is in use for longer than 1 hour, or becomes disconnected, the Device Session becomes expired.
 14. If the app attempts a voting operation after the Device Session is expired, the device returns a message that the device session is expired. The app must request a new App Salt and Device Session.
 
 ### How to Cast a Vote
