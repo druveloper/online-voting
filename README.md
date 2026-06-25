@@ -36,7 +36,7 @@ The registration process has these security goals in mind:
 1. The device only allows a new registration if the request can be validated using a hard-wired key.
 2. The device should be given a "Voter key," which can be renewed yearly without requiring any in-person visit.
 3. The device cannot be used to derrive the plain-text of any key, thumbprint hash, or salt/pepper code from the device.
-4. For technological simplicity, the device cannot use random number generation or time-keeping mechanisms.
+4. For technological simplicity, the device cannot use random number generation or time-keeping for longer than 1 hour.
 5. The Registration Database should not return any keys from the Manufacturer Database.
 6. The Registration Database should not return any keys in plain text.
 
@@ -84,9 +84,12 @@ The voting process has these security goals in mind:
 5. Validation of each vote should require the voter's thumb print in a form that is unique from other votes -- (ex: salted hash).
 
 ### First Time Opening the App
-Before casting a vote, the voter must first download a certified app (or program) onto their phone/tablet/PC. Then they must open the app and connect their USB device. When opened for the first time, the app will read the Device ID from the device and, using a software-embedded certificate and decription key, download initial data from the Registration Database. This includes voter name and a "hash negative" of a photo taken at registration. Now, whenever the app is opened, it computes a hash of the executable code and uses the hash as a seed to generate pseudo-random data which is added to the "hash negative" to form the original photo. The "hash negative" is computed server-side by performing the same process, only subtracting the pseudo-random data, rather than adding. When the voter sees the photo, they know the hash matches. Furthermore, the app checks the resulting photo for corruption and calculates the Shannon Entropy and does not allow the voter to continue if the value is out of range.
+Before casting a vote, the voter must first download a certified app (or program) onto their phone/tablet/PC. Then they must open the app and connect their USB device. When opened for the first time, the app will read the Device ID from the device and, using a software-embedded certificate and decription key, download initial data from the Registration Database.
 
-### App Validation
+### The "Hash Negative"
+One security mechanism involves a "hash negative" of a photo taken at registration. The app computes a hash of the executable code and uses the hash as a seed to generate pseudo-random data. This data is added to the "hash negative" to form the original photo. The "hash negative" has already been computed server-side by performing the same process, only subtracting the pseudo-random data, rather than adding. When the voter sees the photo, they know the hash matches. Furthermore, the app checks the resulting photo for corruption and calculates the Shannon Entropy and does not allow the voter to continue if the value is out of range.
+
+### App Validation and Device Session
 1. When you open the app, it requests a unique App Salt from the USB device.
 2. The device returns the App Salt from persistent memory.
 3. The app requests a Validation Signature from the Registration Database, sending the following:
@@ -94,18 +97,24 @@ Before casting a vote, the voter must first download a certified app (or program
     - App Salt
     - App version details, such as iOS, Android, MacOS, PC, Linux, etc...
 4. The Registration Database computes a salted hash of its own copy of the exact app version.
-5. The Registration Database signs the hash with its Voter Key and returns the signature only.
-6. The app must compute a hash of itself.
-7. The app sends the following to the device:
+5. The Registration Database signs the hash with its Voter Key and returns the following:
+    - the signature (without the hash code)
+    - a "hash negative" of the registration photo, computed using the given App Salt
+6. The app must compute a hash of itself and display the resulting photo.
+7. The app sends the following in a request to the device to start a new "Device Session":
     - The hash computed by the app
     - The signature obtained from the Registration Database
 8. The USB device validates the signature, and if valid, displays "App is safe. Scan finger to continue."
 9. The device waits for a successful scan of the thumb print.
 10. The device then hashes the App Salt for next time.
+11. The device's voting operations are now unlocked for 1 hour.
+12. The device returns a success message to the app, so it can continue.
+13. If the device in use for longer than 1 hour, or becomes disconnected, the Device Session becomes expired.
+14. If the app attempts a voting operation after the Device Session is expired, the device returns a message that the device session is expired. The app must request a new App Salt and Device Session.
 
 ### How to Cast a Vote
 1. The voter opens the app and connects their USB device, going through the validation process.
-2. The voter navigates to the "Election" of choice to see a list of options (candidates/referrendums/etc.)
+2. In the app, the voter navigates to the "Election" of choice to see a list of options (candidates/referrendums/etc.)
 3. The voter chooses an option.
 4. The app reads the following from the device and requests a new Vote Session from the Registration Database:
     - Device ID
