@@ -41,36 +41,44 @@ The registration process has these security goals in mind:
 6. The Registration Database should not return any keys in plain text.
 
 ### How to Register a Device
-To register a device, it must be plugged into a Registration Machine. A registration staff person can populate the voter's personal information via PC connected to the machine. Then the following can happen:
-1. The machine reads the Device ID from the device.
-2. The machine sends a request to the Registration Database to create a new "unconfirmed" registration for the device.
-3. The Registration Database generates a new record with a "Voter Key":
-    - key pair for encryption/decryption
-    - key pair for signature/authentication
-    - random Pepper code (for use with thumb-hash when voting)
-    - initial value of "Vote Counter" -- a random value that changes after each vote
-4. The private keys, Pepper, and Vote Counter are encrypted and signed using the Data Key from the Manufacturer Database.
-5. The following is then sent back to the Registration Machine.
-    -  Voter key, encrypted and signed by Data Key
-6. The Registration Machine hashes the voter's personal information and generates a random AES key.
+To register a device, it must be plugged into a Registration Machine. Then the following can happen:
+1. A registration staff person populates the voter's personal information via PC connected to the machine, including a photo taken live.
+2. The machine reads the Device ID from the device.
+3. The machine sends the following in a request to the Registration Database to create a new "unconfirmed" registration for the device:
+    - the Device ID
+4. The Registration Database generates a new "registration" record with the following:
+    - the Device ID
+    - a new "Voter Key":
+        - key pair for encryption/decryption
+        - key pair for signature/authentication
+        - random Pepper code -- for use with thumb-hash when voting
+        - random Salt-primer code -- to make thumb-hash unique for each vote
+        - initial value of "Vote Counter" -- a random value that changes after each vote
+5. The following "Registration" token is encrypted and signed using the Data Key from the Manufacturer Database:
+    - the Device ID
+    - device-side Voter Key:
+        - private keys
+        - Pepper code
+        - Vote Counter
+6. The token is then sent back to the Registration Machine.
 7. The Registration Machine sends the following to the device in a request to register a new voter:
-    -  hash of voter's personal information
-    -  AES key
-    -  Voter key (as received from Registration Database)
-8. The device validates the Voter key and prompts the voter to scan their thumb print.
+    - the Registration token
+8. The device validates the token and prompts the voter to scan their thumb print.
 9. Once scanned, the thumb print is hashed into a "thumb-hash." The thumb-hash and Voter key are recorded in the device's persistent memory.
 10. The device returns the following:
     - the thumb-hash, encrypted and signed by Registration Key
-    - signature of voter's personal information, made via Registration Key
-    - AES key, encrypted by Registration key
-11. The Registration Machine then sends the following to the Registration Database to "confirm" the registration:
+11. The Registration Machine then sends the following to the Registration Database to "confirm" the registration, encrypted and signed by the machine's key and certificate:
     - the Device ID
-    - AES key, encrypted by Registration key
-    - the voter data, encrypted by the AES key and signed by Registration Key
-    - thumb-hash, encrypted and signed by Registration Key
+    - the voter data
+    - thumb-hash, encrypted and signed by device's Registration Key
 12. The Registration Database decodes the fields and fills out the registration.
 13. The Registration Database saves the peppered hash of the thumb-hash -- HASH(pepper + thumb-hash).
-14. The Registration Database shares its Voter Key with Vote-Counting Databases to allow them to validate and decrypt votes from this device.
+14. The Registration Database shares the following with Vote-Counting Databases to allow them to validate and decrypt votes from this device:
+    - Salted hash of Device ID
+    - Salt used to hash Device ID
+    - the public keys from the Voter Key
+    - HASH(pepper + thumb-hash)
+    - the Salt-primer code -- used to verify a thumb-print
 15. The machine receives confirmation the registration was successful.
 
 ## III. Casting a Vote
@@ -110,7 +118,7 @@ One security mechanism involves a "hash negative" of a photo taken at registrati
 11. The device's voting operations are now unlocked for 1 hour.
 12. The device returns a success message to the app, so it can continue.
 13. If the device is in use for longer than 1 hour, or becomes disconnected, the Device Session becomes expired.
-14. If the app attempts a voting operation after the Device Session is expired, the device returns a message that the device session is expired. The app must request a new App Salt and Device Session.
+14. If the app attempts a voting operation after the Device Session is expired, the device returns a message that the device session is expired. The app must then request a new App Salt and Device Session.
 
 ### How to Cast a Vote
 1. The voter opens the app and connects their USB device, going through the validation process.
