@@ -50,28 +50,29 @@ To register a device, it must be plugged into a Registration Machine. Then the f
     - the Device ID
 4. The Registration Database generates a new "registration" record with the following:
     - the Device ID
+    - random Vote-Counting ID -- to identify the device to Vote-Counter Databases
+    - random Pepper code -- for use with thumb-hash when voting
+    - random Salt code -- to make thumb-hash unique for each vote
+    - initial value of "Vote Code" -- a random value that changes after each vote
     - a new "Voter Key":
         - Device (to-server) key pairs for encryption/decryption and signature/authentication
         - Server (to-device) key pairs for encryption/decryption and signature/authentication
         - Vote-Counter key pairs for encryption/decryption and signature/authentication
-        - random Vote-Counting ID -- to identify the device to Vote-Counter Databases
-        - random Pepper code -- for use with thumb-hash when voting
-        - random Salt code -- to make thumb-hash unique for each vote
-        - initial value of "Vote Code" -- a random value that changes after each vote
 5. The following "Registration" token is encrypted and signed using the Data Key from the Manufacturer Database:
     - the Device ID
+    - Vote-Counting ID
+    - Vote Code
+    - Pepper code
+    - Salt code
     - device-side Voter Key:
         - Device private keys *
         - Server public keys *
         - Vote-Counter public keys *
-        - Vote-Counting ID
-        - Pepper code
-        - Vote Code
 6. The token is then sent back to the Registration Machine, and the device-side keys (*) are discarded.
 7. The Registration Machine sends the following to the device in a request to register a new voter:
     - the Registration token
 8. The device validates the token and prompts the voter to scan their thumb print.
-9. Once scanned, the thumb print is hashed into a "thumb-hash." The thumb-hash and Voter key are recorded in the device's persistent memory.
+9. Once scanned, the thumb print is hashed into a "thumb-hash." The thumb-hash, Voter Key, and registration details are recorded in the device's persistent memory.
 10. The device returns the following:
     - the thumb-hash, encrypted and signed by Registration Key
 11. The Registration Machine then sends the following to the Registration Database to "confirm" the registration, encrypted and signed by the machine's key and certificate:
