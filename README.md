@@ -199,8 +199,8 @@ The Vote-Casting Server ensures each vote is received in a timely manner and act
     - Vote String
     - Salted Hash -- HASH(device-salt + session-time-stamp + HASH(device-pepper + thumb-hash))
 4. The Session Time-Stamp is checked for being within 30 seconds of the Received Time-Stamp. If it is not, it is invalid.
-5. The Vote-Counter Database computes HASH(server-salt + time-stamp + peppered-hash) and compares it to the Salted Hash, which should match.
-6. If there is amtch, the vote is officially counted, placing the plain-text fields into a database table:
+5. The Vote-Counter Database computes HASH(server-salt + session-time-stamp + peppered-hash) and compares it to the Salted Hash, which should match.
+6. If there is a match, the vote is officially counted, placing the plain-text fields into a database table:
     - Vote-Counting ID
     - Confirmation Number
     - Received Time-Stamp
@@ -211,7 +211,7 @@ The Vote-Casting Server ensures each vote is received in a timely manner and act
     - Vote-Cast token, as received
   
 ### Counting Votes
-
+Counting votes consists of simply totalling the row-counts by Election Identifier and Vote String. This can be polled regularly to see how the election is progressing.
 
 ### Final-Total Server
-
+The Final-Total server totals votes from all Vote-Counter Databases for a region's current elections. This can be done regularly during an election to see how it is progressing. Totals for Round 1 and Round 2 can be placed side-by-side, but only Round 1 will be the most transparent until all votes are counted.
