@@ -35,10 +35,12 @@ Each Registration location will have its own "Registration Database" for the vot
 The registration process has these security goals in mind:
 1. The device only allows a new registration if the request can be validated using a hard-wired key.
 2. The device should be given a "Voter key," which can be renewed yearly without requiring any in-person visit.
-3. The device cannot be used to derrive the plain-text of any key, thumbprint hash, or salt/pepper code from the device.
+3. The device cannot be used to derrive the plain-text of any key, signature, hash, or salt/pepper code from the device.
 4. For technological simplicity, the device cannot use random number generation or time-keeping for longer than 1 hour.
 5. The Registration Database should not return any keys from the Manufacturer Database.
 6. The Registration Database should not return any keys in plain text.
+7. The Registration Database should not be used to count votes toward a candidate.
+8. The Vote-Counter Databases should not be able to identify the device or voter from a vote.
 
 ### How to Register a Device
 To register a device, it must be plugged into a Registration Machine. Then the following can happen:
@@ -49,18 +51,23 @@ To register a device, it must be plugged into a Registration Machine. Then the f
 4. The Registration Database generates a new "registration" record with the following:
     - the Device ID
     - a new "Voter Key":
-        - key pair for encryption/decryption
-        - key pair for signature/authentication
+        - Device (to-server) key pairs for encryption/decryption and signature/authentication
+        - Server (to-device) key pairs for encryption/decryption and signature/authentication
+        - Vote-Counter key pairs for encryption/decryption and signature/authentication
+        - random Vote-Counting ID -- to identify the device to Vote-Counter Databases
         - random Pepper code -- for use with thumb-hash when voting
-        - random Salt-primer code -- to make thumb-hash unique for each vote
-        - initial value of "Vote Counter" -- a random value that changes after each vote
+        - random Salt code -- to make thumb-hash unique for each vote
+        - initial value of "Vote Code" -- a random value that changes after each vote
 5. The following "Registration" token is encrypted and signed using the Data Key from the Manufacturer Database:
     - the Device ID
     - device-side Voter Key:
-        - private keys
+        - Device private keys *
+        - Server public keys *
+        - Vote-Counter public keys *
+        - Vote-Counting ID
         - Pepper code
-        - Vote Counter
-6. The token is then sent back to the Registration Machine.
+        - Vote Code
+6. The token is then sent back to the Registration Machine, and the device-side keys (*) are discarded.
 7. The Registration Machine sends the following to the device in a request to register a new voter:
     - the Registration token
 8. The device validates the token and prompts the voter to scan their thumb print.
@@ -73,13 +80,14 @@ To register a device, it must be plugged into a Registration Machine. Then the f
     - thumb-hash, encrypted and signed by device's Registration Key
 12. The Registration Database decodes the fields and fills out the registration.
 13. The Registration Database saves the peppered hash of the thumb-hash -- HASH(pepper + thumb-hash).
-14. The Registration Database shares the following with Vote-Counting Databases to allow them to validate and decrypt votes from this device:
-    - Salted hash of Device ID
-    - Salt used to hash Device ID
-    - the public keys from the Voter Key
+14. The Registration Database shares the following with Vote-Counter Databases to allow them to validate and decrypt votes from this device:
+    - Vote-Counting ID
+    - the Vote-Counter private keys *
+    - the Device public keys from the Voter Key
     - HASH(pepper + thumb-hash)
-    - the Salt-primer code -- used to verify a thumb-print
-15. The machine receives confirmation the registration was successful.
+    - the Salt used to verify a thumb-print
+15. The Vote-Counter private keys (*) are discarded.
+16. The machine receives confirmation the registration was successful.
 
 ## III. Casting a Vote
 
@@ -88,8 +96,8 @@ The voting process has these security goals in mind:
 1. All goals pertaining to registration security apply.
 2. The app should not be relied on to perform security mechanisms, such as random number generation, time-keeping, hashing, or encryption/decryption.
 3. No malware or other apps should be capable of compromising the end-to-end security between the device and the intended servers.
-4. It should be impossible to count a vote (towards a candidate/referrendum/etc.) without validation by the Registration Database.
-5. Validation of each vote should require the voter's thumb print in a form that is unique from other votes -- (ex: salted hash).
+4. It should be impossible to count a vote (towards a candidate/referrendum/etc.) without knowing a public key corresponding to the device's Voter Key.
+5. Validation of each vote should require the voter's thumb print in a form that is unique from their other votes -- (ex: salted hash).
 
 ### First Time Opening the App
 Before casting a vote, the voter must first download a certified app (or program) onto their phone/tablet/PC. Then they must open the app and connect their USB device. When opened for the first time, the app will read the Device ID from the device and, using a software-embedded certificate and decription key, download initial data from the Registration Database.
@@ -126,7 +134,7 @@ One security mechanism involves a "hash negative" of a photo taken at registrati
 3. The voter chooses an option.
 4. The app reads the following from the device and requests a new Vote Session from the Registration Database:
     - Device ID
-    - Vote Counter from persistent memory
+    - Vote Code from persistent memory
 5. The Registration Database generates a device-related "Vote" record with the following:
     - Salt code (for use with the thumb-hash)
     - a hash code -- HASH(salt + x) where x = HASH(pepper + thumb-hash), calculated during registration
@@ -135,7 +143,7 @@ One security mechanism involves a "hash negative" of a photo taken at registrati
 6. The following is sent back to the app:
     - the AES key, encrypted by the database's Voter Key
     - a new "Vote Session" token, encrypted by the AES key and signed by the database's Voter Key:
-        - the Vote Counter
+        - the Vote Code
         - the Salt code
         - the Confirmation Number
 8. The app sends the following to the device, requesting a "vote":
@@ -143,8 +151,8 @@ One security mechanism involves a "hash negative" of a photo taken at registrati
     - the "Vote String" -- a human-readable string, such as a candidate's name, based on the option the voter chose
     - the AES key, as is
     - Vote Session token
-9. The USB device validates the Vote Session token via its Voter Key. The token's Vote Counter value must also match the device's internal Vote Counter.
-10. The device "increments" the Vote Counter by computing a hash of the current value and overwriting it in persistent memory.
+9. The USB device validates the Vote Session token via its Voter Key. The token's Vote Code value must also match the device's internal Vote Code.
+10. The device "increments" the Vote Code by computing a hash of the current value and overwriting it in persistent memory.
 11. The device displays the Election identifiier and Vote String and waits for the voter to confirm.
 12. The voter confirms by scanning their thumb print on the device.
 13. The device displays a "busy" message -- "Sending vote..."
