@@ -84,7 +84,7 @@ To register a device, it must be plugged into a Registration Machine. Then the f
 14. The Registration Database shares the following with Vote-Counter Databases to allow them to validate and decrypt votes from this device:
     - Vote-Counting ID
     - the Vote-Counter private keys *
-    - the Device public keys from the Voter Key
+    - the Device public keys
     - HASH(pepper + thumb-hash)
     - the Salt used to verify a thumb-print
 15. The Vote-Counter private keys (*) are discarded.
@@ -136,44 +136,43 @@ One security mechanism involves a "hash negative" of a photo taken at registrati
 4. The app reads the following from the device and requests a new Vote Session from the Registration Database:
     - Device ID
     - Vote Code from persistent memory
-5. The Registration Database generates a device-related "Vote" record with the following:
-    - Salt code (for use with the thumb-hash)
-    - a hash code -- HASH(salt + x) where x = HASH(pepper + thumb-hash), calculated during registration
+5. The Registration Database generates a device-related "Vote" token with the following:
     - a random Confirmation Number, unique to this vote
     - an AES key used to communicate with the device
+    - a Time-Stamp (in seconds) indicating when the token was created
 6. The following is sent back to the app:
     - the AES key, encrypted by the database's Voter Key
     - a new "Vote Session" token, encrypted by the AES key and signed by the database's Voter Key:
         - the Vote Code
-        - the Salt code
         - the Confirmation Number
-8. The app sends the following to the device, requesting a "vote":
+        - the Time-Stamp
+7. The app sends the following to the device, requesting a "vote":
     - the Election identifier
     - the "Vote String" -- a human-readable string, such as a candidate's name, based on the option the voter chose
     - the AES key, as is
     - Vote Session token
-9. The USB device validates the Vote Session token via its Voter Key. The token's Vote Code value must also match the device's internal Vote Code.
-10. The device "increments" the Vote Code by computing a hash of the current value and overwriting it in persistent memory.
-11. The device displays the Election identifiier and Vote String and waits for the voter to confirm.
-12. The voter confirms by scanning their thumb print on the device.
-13. The device displays a "busy" message -- "Sending vote..."
-14. The device adds a record of the Confirmation Number and Election identifier in its persistent memory.
-15. The device returns the following:
-    - a "Vote Cast" token
+8. The USB device validates the Vote Session token via its Voter Key. The token's Vote Code value must also match the device's internal Vote Code.
+9. The device "increments" the Vote Code by computing a hash of the current value and overwriting it in persistent memory.
+10. The device displays the Election identifiier and Vote String and waits for the voter to confirm.
+11. The voter confirms by scanning their thumb print on the device.
+12. The device displays a "busy" message -- "Sending vote..."
+13. The device adds a record of the Confirmation Number and Election identifier in its persistent memory.
+14. The device returns the following:
+    - a "Vote Cast" token, signed by the device's Voter Key
         - the Confirmation Number
+        - the Time-Stamp
         - the same AES key used when decrypting, but encrypted by the device's Voter key
         - a "secure" field, encrypted by the same AES key:
             - the Election identifier
             - the Vote String
-        - a salted hash of the thumb-hash (in order to conceal the actual thumb-hash) -- HASH(salt + HASH(pepper + thumb-hash))
-        - digital signature of the above fields, made with the device's Voter Key
-17. The app then sends the Vote Cast token, as is, in a request to the Registration Database.
-18. The Registration Database looks up the Vote record by Confirmation Number and validates the token received, including salted thumb-hash.
-19. The Registration Database then sends the Vote-Cast token to 2 random Vote-Counting databases. One request includes a field indicating it is for Round 1 count. The second request indicates it is for Round 2 count.
-20. The app waits a short amount of time to receive a "Vote-Confirmation token," which can be sent to the USB device to prove the vote was counted:
+        - a salted hash of the thumb-hash -- HASH(salt + time-stamp + HASH(pepper + thumb-hash))
+15. The app then sends the Vote Cast token, as is, in a request to a Vote-Casting Server.
+16. The Vote-Casting Server then sends the Vote-Cast token to 2 random Vote-Counter databases. One request includes a field indicating it is for Round 1 count. The second request indicates it is for Round 2 count.
+17. The app receives a message that the "Vote was cast" and displays it to the voter.
+18. The app waits a short amount of time to receive a "Vote-Confirmation token," which can be sent to the USB device to prove the vote was counted:
     - Confirmation Number
     - signature of Confirmation Number, made with Voter key on server-side
-21. If the app request times out, a background process checks hourly to notfiy the voter that they voted. The notification will include the Vote-Confirmation token.
-22. When the device receives a Vote-Confirmation token, it displays "You voted!" and the Election identifier corresponding to the Confirmation Number in its persisent memory. The record of the vote is then removed from memory.
+19. If the app request times out, a background process checks hourly to notfiy the voter that they voted. The notification will include the Vote-Confirmation token.
+20. When the device receives a Vote-Confirmation token, it displays "You voted!" and the Election identifier corresponding to the Confirmation Number in its persisent memory. The record of the vote is then removed from memory.
 
 ## IV. Counting the Votes
