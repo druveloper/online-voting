@@ -35,12 +35,13 @@ Each Registration location will have its own "Registration Database" for the vot
 The registration process has these security goals in mind:
 1. The device only allows a new registration if the request can be validated using a hard-wired key.
 2. The device should be given a "Voter key," which can be renewed yearly without requiring any in-person visit.
-3. The device cannot be used to derrive the plain-text of any key, signature, hash, or salt/pepper code from the device.
-4. For technological simplicity, the device cannot use random number generation or time-keeping for longer than 1 hour.
+3. No device, machine, or server can be used to derrive the unauthorized plain-text of any key, signature, hash, or salt/pepper code.
+4. For technological simplicity, the device cannot use the following:
+    - time-keeping for longer than 1 hour 
+    - random number generation
 5. The Registration Database should not return any keys from the Manufacturer Database.
-6. The Registration Database should not return any keys in plain text.
-7. The Registration Database should not be used to count votes toward a candidate.
-8. The Vote-Counter Databases should not be able to identify the device or voter from a vote.
+6. The Registration Database should not be used to count votes toward a candidate.
+7. The Vote-Counter Databases should not be able to derrive the Device ID or voter identity from a vote token.
 
 ### How to Register a Device
 To register a device, it must be plugged into a Registration Machine. Then the following can happen:
@@ -143,12 +144,12 @@ One security mechanism involves a "hash negative" of a photo taken at registrati
 6. The following is sent back to the app:
     - the AES key, encrypted by the database's Voter Key
     - a new "Vote Session" token, encrypted by the AES key and signed by the database's Voter Key:
-        - the Vote Code
-        - the Confirmation Number
-        - the Time-Stamp
+        - Vote Code
+        - Confirmation Number
+        - Session Time-Stamp
 7. The app sends the following to the device, requesting a "vote":
-    - the Election identifier
-    - the "Vote String" -- a human-readable string, such as a candidate's name, based on the option the voter chose
+    - Election identifier
+    - "Vote String" -- a human-readable string, such as a candidate's name, based on the option the voter chose
     - the AES key, as is
     - Vote Session token
 8. The USB device validates the Vote Session token via its Voter Key. The token's Vote Code value must also match the device's internal Vote Code.
@@ -159,20 +160,58 @@ One security mechanism involves a "hash negative" of a photo taken at registrati
 13. The device adds a record of the Confirmation Number and Election identifier in its persistent memory.
 14. The device returns the following:
     - a "Vote Cast" token, signed by the device's Voter Key
-        - the Confirmation Number
-        - the Time-Stamp
+        - Vote-Counting ID (from perisistent memory)
+        - Confirmation Number
+        - Session Time-Stamp
         - the same AES key used when decrypting, but encrypted by the device's Voter key
         - a "secure" field, encrypted by the same AES key:
             - the Election identifier
             - the Vote String
         - a salted hash of the thumb-hash -- HASH(salt + time-stamp + HASH(pepper + thumb-hash))
 15. The app then sends the Vote Cast token, as is, in a request to a Vote-Casting Server.
-16. The Vote-Casting Server then sends the Vote-Cast token to 2 random Vote-Counter databases. One request includes a field indicating it is for Round 1 count. The second request indicates it is for Round 2 count.
-17. The app receives a message that the "Vote was cast" and displays it to the voter.
-18. The app waits a short amount of time to receive a "Vote-Confirmation token," which can be sent to the USB device to prove the vote was counted:
+16. The app receives a message that the "Vote was cast" and displays it to the voter.
+17. The app waits a short amount of time to receive a "Vote-Confirmation token," which can be sent to the USB device to prove the vote was counted:
     - Confirmation Number
-    - signature of Confirmation Number, made with Voter key on server-side
-19. If the app request times out, a background process checks hourly to notfiy the voter that they voted. The notification will include the Vote-Confirmation token.
-20. When the device receives a Vote-Confirmation token, it displays "You voted!" and the Election identifier corresponding to the Confirmation Number in its persisent memory. The record of the vote is then removed from memory.
+    - signature of Confirmation Number, made with Vot-Counter private key
+18. If the app request times out, a background process checks hourly to notfiy the voter that they voted. The notification will include the Vote-Confirmation token.
+19. When the device receives a Vote-Confirmation token, it displays "You voted!" and the Election identifier corresponding to the Confirmation Number in its persisent memory. The record of the vote is then removed from memory.
 
 ## IV. Counting the Votes
+Counting a vote involves 4 servers: 1 Vote-Casting Server, 2 Vote-Counter Databases, and 1 Final-Total server. The Vote-Casting Server receives votes and sends them to Vote-Counter Databases. Each Vote-Counter Database counts a portion of all votes in an election, and the Final-Total server sums the counts from all Vote-Counter Databases involved in the election. When a Vote-Counter Database receives a vote, that vote is tagged as either Round 1 or Round 2. All votes with Round 1 are prioritized over Round 2. However, all votes in both rounds eventually get counted. Round 2 exists solely to confirm results from Round 1.
+
+### The Vote-Casting Server
+The Vote-Casting Server ensures each vote is received in a timely manner and acts as a buffer during peak voting times. When it receives a Vote-Cast token, it then adds it's own "Received Time-Stamp" and sends the Vote-Cast token to 2 random Vote-Counter databases. One request adds a "Round" field with a value of 1, indicating it is for Round 1 count. The second request adds the Round field with a value of 2.
+
+### How to Count a Vote
+1. Upon each device's registration (or renewal of registration), a Vote-Counter Database receives the following:
+    - Vote-Counting ID
+    - Vote-Counter private keys
+    - Device public keys
+    - Peppered Hash -- HASH(pepper + thumb-hash)
+    - Salt used to verify a thumb-print
+2. When a Vote-Cast token is received, its Vote-Counting ID is used to look up the above information.
+3. Once a Vote-Cast token is validated and decrypted, the result contains the following fields:
+    - Received Time-Stamp
+    - Vote-Counting ID
+    - Confirmation Number
+    - Session Time-Stamp
+    - Election identifier
+    - Vote String
+    - Salted Hash -- HASH(device-salt + session-time-stamp + HASH(device-pepper + thumb-hash))
+4. The Session Time-Stamp is checked for being within 30 seconds of the Received Time-Stamp. If it is not, it is invalid.
+5. The Vote-Counter Database computes HASH(server-salt + time-stamp + peppered-hash) and compares it to the Salted Hash, which should match.
+6. If there is amtch, the vote is officially counted, placing the plain-text fields into a database table:
+    - Vote-Counting ID
+    - Confirmation Number
+    - Received Time-Stamp
+    - Session Time-Stamp
+    - Counted Time-Stamp -- created new
+    - Election Identifier
+    - Vote String
+    - Vote-Cast token, as received
+  
+### Counting Votes
+
+
+### Final-Total Server
+
