@@ -8,6 +8,14 @@ To solve this issue, I propose a kind of USB device which a citizen can plug int
 
 ![Picture of device](USB-device.png)
 
+Synopsis of usage:
+1. A voter goes to a nearby registration location to pick up and register a device in their name. They download a voting app or program to their phone/tablet/PC.
+2. To vote, the voter opens the app and scans their finger print to begin.
+3. The voter chooses an election and an "option" (ex: candidate's name).
+4. The voter scans their finger print again to confirm the vote.
+5. The vote is cast, and the device receives confirmation.
+6. The device can be disconnected, or the voter can vote in another current election.
+
 Security considerations have been divided into 4 areas:
 1. Manufacturing of the devices.
 2. Registration of each device with a voter.
@@ -122,7 +130,7 @@ One security mechanism involves a "hash negative" of a photo taken at registrati
 7. The app sends the following in a request to the device to start a new "Device Session":
     - The hash computed by the app
     - The signature obtained from the Registration Database
-8. The USB device validates the signature, and if valid, displays "App is safe. Scan finger to continue."
+8. The USB device validates the signature, and if valid, displays "If you see your photo, scan finger to continue. Otherwise, disconnect."
 9. The device waits for a successful scan of the thumb print.
 10. The device then hashes the App Salt for next time.
 11. The device's voting operations are now unlocked for 1 hour.
