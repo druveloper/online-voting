@@ -12,7 +12,7 @@ Synopsis of usage:
 1. A voter goes to a nearby registration location to pick up and register a device in their name. They download a voting app or program to their phone/tablet/PC.
 2. To vote, the voter opens the app and scans their finger print to begin.
 3. The voter chooses an election and an "option" (ex: candidate's name).
-4. The voter scans their finger print again to confirm the vote.
+4. The device displays the election and option chosen, and the voter scans their finger print again to confirm the vote.
 5. The vote is cast, and the device receives confirmation.
 6. The device can be disconnected, or the voter can vote in another current election.
 
@@ -28,16 +28,16 @@ In each of these areas, the plan uses information entropy so that any nefarious 
 The devices should be manufactured in various securely controlled facilities across the nation. Once made, they are shipped to nearby Registration locations, where voters can go to receive a device. Voters do not need to return to the Registration location to cast a vote, only to receive a new device.
 
 When manufactured, the facility will generate the following for each device:
-1. **Device ID** - uniquely identifies the device.
-2. **Data encryption public/private key pair** - for privacy of data going to the device.
-3. **Data signature public/private key pair** - for authentication of data going to the device.
-4. **Registration encryption public/private key pair** - for privacy when registering the device with a voter.
-5. **Registration signature public/private key pair** - for authentication when registering the device with a voter.
+1. **Device ID** - uniquely identifies the device, and includes a unique code corresponding to the facility
+2. **Data encryption public/private key pair** - for privacy of data going to the device
+3. **Data signature public/private key pair** - for authentication of data going to the device
+4. **Registration encryption public/private key pair** - for privacy when registering the device with a voter
+5. **Registration signature public/private key pair** - for authentication when registering the device with a voter
 
-Each device will be hard-wired with the Device ID and either the private or public portion of the Data keys and Registration keys. For each public/private key, the remaining counter-part, which does not go into the device, will go into a database within the facility along with the Device ID for association. The database counter-parts are used for server-side communication between the device and servers. For brevity, we can refer to these keys as merely the "Data key" or "Registration key" and infer which ones are used based their given purpose and location (device or server). We can also assume that "hybrid" encryption (via encrypted AES key) is used when necessary. The aforementioned database will be called the "Manufacturer Database."
+Each device will be hard-wired with the Device ID and either the private or public portion of the Data keys and Registration keys. For each public/private key pair, the remaining counter-part which does not go into the device will go into a database within the facility along with the Device ID for association. The database counter-parts are used for server-side communication between the device and servers. For brevity, we can refer to these keys as merely the "Data key" or "Registration key" and infer which ones are used based their given purpose and location (device or server). We can also assume that "hybrid" encryption (via encrypted AES key) is used when necessary. The aforementioned database will be called the "Manufacturer Database." A Manufacturer Database is only accessible to a "Registration Database" which authenticates by a client-side certificate and encryption key.
 
 ## II. Registration
-Each Registration location will have its own "Registration Database" for the voters it registers. In order to securely and efficiently register devices, an additional type of device, which we'll call a "Registration Machine," has to be made and distributed to Registration locations, one machine for each line of people expected. Each machine will have its own client-side certificate and encryption key for communication with the Registration Database. Each machine will also have only enough memory for one voter to be registered, and an idle timer that clears the memory after a certain time limit.
+Each Registration location will have its own Registration Database for the voters it registers. In order to securely and efficiently register devices, an additional type of device, which we'll call a "Registration Machine," has to be made and distributed to Registration locations, one machine for each line of people expected. Each machine will have its own client-side certificate and encryption key for communication with the Registration Database. Each machine will also have only enough memory for one voter to be registered, and an idle timer that clears the memory after a certain time limit.
 
 ### Security Goals
 The registration process has these security goals in mind:
