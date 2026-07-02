@@ -16,6 +16,17 @@ Synopsis of usage:
 5. The vote is cast, and the device receives confirmation.
 6. The device can be disconnected, or the voter can vote in another current election.
 
+Overall Security Strategy:
+1. Ensure end-to-end privacy and authentication between this device and any server.
+2. Use unique keys for each device's communications, so that the exposure of one voter's key does not impact other voters.
+3. Most keys are renewable, encrypted by hard-wired keys.
+4. Hard-wired keys are used rarely, such as no more than yearly.
+5. Each vote cast is encrypted with its own key to avoid vote-transmission from being blocked based on the content of the vote.
+6. A vote-counting system should not be able to associate a vote with a voter's personal information or their voting device. This thwarts any attempts to disenfranchise voters based on demographic characteristics.
+7. If post-election analysis is needed, privileged individuals can be given access to voter registrations, which can be associated with the votes cast.
+8. Voter registrars are held accountable via "forced sharing" with other registrars, where privileged individuals verify the legitimacy of registrations from other registrars.
+9. Vote-counting systems are held accountable by sending each vote to 2 random systems. One system will count "Round 1" while the other counts "Round 2." Totals for both rounds should match across all vote-counting systems involved in an election.
+
 Security considerations have been divided into 4 areas:
 1. Manufacturing of the devices.
 2. Registration of each device with a voter.
