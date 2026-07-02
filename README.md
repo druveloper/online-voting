@@ -53,7 +53,7 @@ Each Registration location will have its own Registration Database for the voter
 ### Security Goals
 The registration process has these security goals in mind:
 1. The device only allows a new registration if the request can be validated using a hard-wired key.
-2. The device should be given a "Voter key," which can be renewed yearly without requiring any in-person visit.
+2. A registration's cryptographic details (keys, codes, salts, etc...) can be renewed yearly without requiring any in-person visit.
 3. No device, machine, or server can be used to derrive the unauthorized plain-text of any key, signature, hash, or salt/pepper code.
 4. For technological simplicity, the device cannot use the following:
     - time-keeping for longer than 1 hour 
@@ -115,6 +115,17 @@ To register a device, it must be plugged into a Registration Machine. Then the f
 17. The Vote-Counter private keys (*) are discarded.
 18. The machine receives confirmation the registration was successful.
 
+### How to Renew a Registration
+Once registered to a person, a device's registration's cryptographic details (keys, codes, salts, etc...) will need to be renewed at least yearly. The app will check if a renewal is needed whenever it is opened and verified.
+
+1. The app connects to the Registration Database, requesting a new registration.
+2. The Registration Database generates new keys, codes, and salts.
+3. The Registration Database obtains a new Registration token, signed and encrypted by the Data key from the Manufacturer Database.
+4. The Registration token is returned to the app, which sends the token to the device.
+5. The device decrypts and validates the token, then updates its cryptographic details in perisistent memory.
+6. The device displays "Registration is renewed."
+7. The app continues on to allow the voter to vote.
+
 ## III. Casting a Vote
 
 ### Security Goals
@@ -154,8 +165,9 @@ One security mechanism involves a "hash negative" of a photo taken at registrati
 10. The device then hashes the App Salt for next time.
 11. The device's voting operations are now unlocked for 1 hour.
 12. The device returns a success message to the app, so it can continue.
-13. If the device is in use for longer than 1 hour, or becomes disconnected, the Device Session becomes expired.
-14. If the app attempts a voting operation after the Device Session is expired, the device returns a message that the device session is expired. The app must then request a new App Salt and Device Session.
+13. The app then checks if the registration needs renewal, and if so, renews the registration.
+14. If the device is in use for longer than 1 hour, or becomes disconnected, the Device Session becomes expired.
+15. If the app attempts a voting operation after the Device Session is expired, the device returns a message that the device session is expired. The app must then request a new App Salt and Device Session.
 
 ### How to Cast a Vote
 1. The voter opens the app and connects their USB device, going through the validation process.
