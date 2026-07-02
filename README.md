@@ -53,7 +53,7 @@ Each Registration location will have its own Registration Database for the voter
 ### Security Goals
 The registration process has these security goals in mind:
 1. The device only allows a new registration if the request can be validated using a hard-wired key.
-2. A registration's cryptographic details (keys, codes, salts, etc...) can be renewed yearly without requiring any in-person visit.
+2. A registration's cryptographic details (keys, codes, etc...) can be renewed yearly without requiring any in-person visit.
 3. No device, machine, or server can be used to derrive the unauthorized plain-text of any key, signature, hash, or salt/pepper code.
 4. For technological simplicity, the device cannot use the following:
     - time-keeping for longer than 1 hour 
@@ -103,7 +103,7 @@ To register a device, it must be plugged into a Registration Machine. Then the f
 13. The Registration Machine then sends the following to the Registration Database to "confirm" the registration, encrypted and signed by the machine's key and certificate:
     - the Device ID
     - the voter data
-    - thumb-hash, encrypted and signed by device's Registration Key
+    - HASH(pepper + thumb-hash), signed by device's Registration Key
 14. The Registration Database decodes the fields and fills out the registration.
 15. The Registration Database saves the peppered hash of the thumb-hash -- HASH(pepper + thumb-hash).
 16. The Registration Database shares the following with Vote-Counter Databases to allow them to validate and decrypt votes from this device:
@@ -116,15 +116,23 @@ To register a device, it must be plugged into a Registration Machine. Then the f
 18. The machine receives confirmation the registration was successful.
 
 ### How to Renew a Registration
-Once registered to a person, a device's registration's cryptographic details (keys, codes, salts, etc...) will need to be renewed at least yearly. The app will check if a renewal is needed whenever it is opened and verified.
+Once registered to a person, a device's registration's cryptographic details (keys, codes, etc...) will need to be renewed at least yearly. The app will check if a renewal is needed whenever it is opened and verified.
 
 1. The app connects to the Registration Database, requesting a new registration.
-2. The Registration Database generates new keys, codes, and salts.
+2. The Registration Database generates new keys and codes for a new "unconfirmed" registration.
 3. The Registration Database obtains a new Registration token, signed and encrypted by the Data key from the Manufacturer Database.
-4. The Registration token is returned to the app, which sends the token to the device.
-5. The device decrypts and validates the token, then updates its cryptographic details in perisistent memory.
-6. The device displays "Registration is renewed."
-7. The app continues on to allow the voter to vote.
+4. The Registration token is returned to the app.
+5. The app sends the token to the device.
+6. The device decrypts and validates the token.
+7. The device displays "Registration expired. Scan finger to continue."
+8. The voter scans their thumb print to confirm.
+9. The device validates the thumb print using persistent memory, to ensure it has not changed.
+10. The device displays "Confirming new registration..."
+11. The device then updates its cryptographic details in perisistent memory.
+12. The device hashes the thumb-print with the new Pepper code -- HASH(pepper + thumb-hash)
+13. The device returns the result, which is encrypted, signed, and sent to the Registration Database for confirmation.
+14. The app receives a success message from the Registration Database that the registration is confirmed.
+15. The app continues on to allow the voter to vote.
 
 ## III. Casting a Vote
 
