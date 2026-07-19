@@ -63,12 +63,13 @@ The registration process has these security goals in mind:
 7. The Vote-Counter Databases should not be able to derrive the Device ID or voter identity from a vote token.
 
 ### How to Register a Device
-To register a device, it must be plugged into a Registration Machine. Then the following can happen:
+To register a device, it must be plugged into a Registration Machine. During registration, the voter is asked to scan their finger print, which gets hashed and stored on the device. This data is called a "thumb-hash." The following is a detailed outline of the process:
 1. A registration staff person populates the voter's personal information via PC connected to the machine, including a photo taken live.
 2. The machine reads the Device ID from the device.
 3. The machine sends the following in a request to the Registration Database to create a new "unconfirmed" registration for the device:
     - the Device ID
 4. The Registration Database generates a new "registration" record with the following:
+    - new unique Registration ID
     - the Device ID
     - random Vote-Counting ID -- to identify the device to Vote-Counter Databases
     - random Pepper code -- for use with thumb-hash when voting
@@ -79,6 +80,7 @@ To register a device, it must be plugged into a Registration Machine. Then the f
         - Server (to-device) key pairs for encryption/decryption and signature/authentication
         - Vote-Counter key pairs for encryption/decryption and signature/authentication
 5. The following "Registration" token is generated:
+    - Registration ID
     - Voting URL
     - Device ID
     - Vote-Counting ID
@@ -95,10 +97,11 @@ To register a device, it must be plugged into a Registration Machine. Then the f
 8. The token, encrypted and signed using the Data Key, is then sent back to the Registration Machine, and the device-side keys (*) are discarded.
 9. The Registration Machine sends the following to the device in a request to register a new voter:
     - the Registration token
-10. The device validates the token and prompts the voter to scan their thumb print.
-11. Once scanned, the thumb print is hashed into a "thumb-hash." The thumb-hash, Voter Key, and registration details are recorded in the device's persistent memory.
-12. The device returns the following:
-    - the thumb-hash, encrypted and signed by Registration Key
+10. The device validates the token and prompts the voter to scan their finger print.
+11. Once scanned, the finger print is hashed (the "thumb-hash"). The thumb-hash, Voter Key, and registration details are recorded in the device's persistent memory.
+12. The device returns the following, signed by the Registration Key:
+    - Registration ID
+    - the thumb-hash, encrypted by the Registration Key
 13. The Registration Machine then sends the following to the Registration Database to "confirm" the registration, encrypted and signed by the machine's key and certificate:
     - the Device ID
     - the voter data
@@ -128,9 +131,13 @@ Once registered to a person, a device's registration's cryptographic details (ke
 10. The device displays "Confirming new registration..."
 11. The device then updates its cryptographic details in perisistent memory.
 12. The device hashes the thumb-print with the new Pepper code -- HASH(pepper + thumb-hash)
-13. The device returns the result, which is encrypted, signed, and sent to the Registration Database for confirmation.
-14. The app receives a success message from the Registration Database that the registration is confirmed.
-15. The app continues on to allow the voter to vote.
+13. The device returns the following, signed by the Registration Key:
+    - Registration ID
+    - the old Peppered Thumb-Hash, encrypted by the Registration Key
+    - the new Peppered Thumb-Hash, encrypted by the Registration Key
+14. The app sends the result to the Registration Database for confirmation.
+15. The app receives a success message from the Registration Database that the registration is confirmed.
+16. The app continues on to allow the voter to vote.
 
 ## III. Casting a Vote
 
