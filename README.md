@@ -72,7 +72,7 @@ To register a device, it must be plugged into a Registration Machine. Then the f
     - the Device ID
     - random Vote-Counting ID -- to identify the device to Vote-Counter Databases
     - random Pepper code -- for use with thumb-hash when voting
-    - random Salt code -- to make thumb-hash unique for each vote
+    - Thumb-Hash Validation Key -- public/private key pair
     - initial value of "Vote Code" -- a random value that changes after each vote
     - a new "Voter Key":
         - Device (to-server) key pairs for encryption/decryption and signature/authentication
@@ -84,7 +84,6 @@ To register a device, it must be plugged into a Registration Machine. Then the f
     - Vote-Counting ID
     - Vote Code
     - Pepper code
-    - Salt code
     - device-side Voter Key:
         - Device private keys *
         - Server public keys *
@@ -110,9 +109,8 @@ To register a device, it must be plugged into a Registration Machine. Then the f
     - Vote-Counting ID
     - the Vote-Counter private keys *
     - the Device public keys
-    - HASH(pepper + thumb-hash)
-    - the Salt used to verify a thumb-print
-17. The Vote-Counter private keys (*) are discarded.
+    - Thumb-Hash Validation public key *
+17. The Registration Database discards keys (*) no longer needed.
 18. The machine receives confirmation the registration was successful.
 
 ### How to Renew a Registration
@@ -189,12 +187,16 @@ One security mechanism involves a "hash negative" of a photo taken at registrati
     - a random Confirmation Number, unique to this vote
     - an AES key used to communicate with the device
     - a Time-Stamp (in seconds) indicating when the token was created
+    - random Salt code -- to make thumb-hash unique for each vote
+    - Signature of \[confirmation-number + time-stamp + HASH(salt + peppered-thumb-hash)\], made with Thumb-Hash Validation private key
 7. The following is sent back to the app:
     - the AES key, encrypted by the database's Voter Key
     - a new "Vote Session" token, encrypted by the AES key and signed by the database's Voter Key:
         - Vote Code
         - Confirmation Number
         - Session Time-Stamp
+        - Salt code for thumb-hash
+        - Signature for Thumb-Hash Validation
     - URL to a Vote-Casting server
 8. The app sends the following to the device, requesting a "vote":
     - Election identifier
@@ -216,12 +218,13 @@ One security mechanism involves a "hash negative" of a photo taken at registrati
         - a "secure" field, encrypted by the same AES key:
             - the Election identifier
             - the Vote String
-        - a salted hash of the thumb-hash -- HASH(salt + time-stamp + HASH(pepper + thumb-hash))
+        - a salted hash of the thumb-hash -- HASH(salt + HASH(pepper + thumb-hash))
+        - Signature for Thumb-Hash Validation
 16. The app then sends the Vote Cast token, as is, in a request to the Vote-Casting server.
 17. The app receives a message that the "Vote was cast" and displays it to the voter.
 18. The app waits a short amount of time to receive a "Vote-Confirmation token," which can be sent to the USB device to prove the vote was counted:
     - Confirmation Number
-    - signature of Confirmation Number, made with Vot-Counter private key
+    - signature of Confirmation Number, made with Vote-Counter private key
 19. If the app request times out, a background process checks hourly to notfiy the voter that they voted. The notification will include the Vote-Confirmation token.
 20. When the device receives a Vote-Confirmation token, it displays "You voted!" and the Election identifier corresponding to the Confirmation Number in its persisent memory. The record of the vote is then removed from memory.
 
@@ -236,8 +239,7 @@ The Vote-Casting Server ensures each vote is received in a timely manner and act
     - Vote-Counting ID
     - Vote-Counter private keys
     - Device public keys
-    - Peppered Hash -- HASH(pepper + thumb-hash)
-    - Salt used to verify a thumb-print
+    - Thumb-Hash Validation public key
 2. When a Vote-Cast token is received, its Vote-Counting ID is used to look up the above information.
 3. Once a Vote-Cast token is validated and decrypted, the result contains the following fields:
     - Received Time-Stamp
@@ -246,10 +248,11 @@ The Vote-Casting Server ensures each vote is received in a timely manner and act
     - Session Time-Stamp
     - Election identifier
     - Vote String
-    - Salted Hash -- HASH(device-salt + session-time-stamp + HASH(device-pepper + thumb-hash))
-4. The Session Time-Stamp is checked for being within 30 seconds of the Received Time-Stamp. If it is not, it is invalid.
-5. The Vote-Counter Database computes HASH(server-salt + session-time-stamp + peppered-hash) and compares it to the Salted Hash, which should match.
-6. If there is a match, the vote is officially counted, placing the plain-text fields into a database table:
+    - Salted Thumb-Hash -- HASH(device-salt + HASH(device-pepper + thumb-hash))
+    - Signature for Thumb-Hash Validation
+4. The Session Time-Stamp is checked for being within 5 minutes before the Received Time-Stamp. If it is not, it is invalid.
+5. The Vote-Counter Database uses its Thumb-Hash Validation key to validate the Salted Thumb-Hash against the Signature -- \[confirmation-number + session-time-stamp + salted-thumb-hash\]
+6. If valid, the vote is officially counted, placing the plain-text fields into a database table:
     - Vote-Counting ID
     - Confirmation Number
     - Received Time-Stamp
