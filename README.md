@@ -38,6 +38,8 @@ In each of these areas, the plan uses information entropy so that any nefarious 
 ## I. Manufacturing
 The devices should be manufactured in various securely controlled facilities across the nation. Once made, they are shipped to nearby Registration locations, where voters can go to receive a device. Voters do not need to return to the Registration location to cast a vote, only to receive a new device.
 
+![Manufacturing Diagram](Manufacturing-Diagram.png)
+
 When manufactured, the facility will generate the following for each device:
 1. **Device ID** - uniquely identifies the device, and includes a unique code corresponding to the facility
 2. **Data encryption public/private key pair** - for privacy of data going to the device
