@@ -66,6 +66,9 @@ The registration process has these security goals in mind:
 
 ### How to Register a Device
 To register a device, it must be plugged into a Registration Machine. During registration, the voter is asked to scan their finger print, which gets hashed and stored on the device. This data is called a "thumb-hash." The following is a detailed outline of the process:
+
+![Registration Part 1](Registration-Part-1.png)
+
 1. A registration staff person populates the voter's personal information via PC connected to the machine, including a photo taken live.
 2. The machine reads the Device ID from the device.
 3. The machine sends the following in a request to the Registration Database to create a new "unconfirmed" registration for the device:
@@ -75,7 +78,6 @@ To register a device, it must be plugged into a Registration Machine. During reg
     - the Device ID
     - random Vote-Counting ID -- to identify the device to Vote-Counter Databases
     - random Pepper code -- for use with thumb-hash when voting
-    - Thumb-Hash Validation Key -- public/private key pair
     - initial value of "Vote Code" -- a random value that changes after each vote
     - a new "Voter Key":
         - Device (to-server) key pairs for encryption/decryption and signature/authentication
@@ -97,6 +99,9 @@ To register a device, it must be plugged into a Registration Machine. During reg
     - randomly generated AES key -- to be encrypted by the Data Key
     - hash of the token -- to form a signature with the Data key
 8. The token, encrypted and signed using the Data Key, is then sent back to the Registration Machine, and the device-side keys (*) are discarded.
+
+![Registration Part 2](Registration-Part-2.png)
+
 9. The Registration Machine sends the following to the device in a request to register a new voter:
     - the Registration token
 10. The device validates the token and prompts the voter to scan their finger print.
@@ -104,19 +109,23 @@ To register a device, it must be plugged into a Registration Machine. During reg
 12. The device returns the following, signed by the Registration Key:
     - Registration ID
     - the thumb-hash, encrypted by the Registration Key
+
+![Registration Part 3](Registration-Part-3.png)
+
 13. The Registration Machine then sends the following to the Registration Database to "confirm" the registration, encrypted and signed by the machine's key and certificate:
     - the Device ID
     - the voter data
     - HASH(pepper + thumb-hash), signed by device's Registration Key
 14. The Registration Database decodes the fields and fills out the registration.
 15. The Registration Database saves the peppered hash of the thumb-hash -- HASH(pepper + thumb-hash).
-16. The Registration Database shares the following with Vote-Counter Databases to allow them to validate and decrypt votes from this device:
+16. The Registration Database generates a Thumb-Hash Validation Key -- public/private key pair
+17. The Registration Database shares the following with Vote-Counter Databases to allow them to validate and decrypt votes from this device:
     - Vote-Counting ID
     - the Vote-Counter private keys *
     - the Device public keys
     - Thumb-Hash Validation public key *
-17. The Registration Database discards keys (*) no longer needed.
-18. The machine receives confirmation the registration was successful.
+18. The Registration Database discards keys (*) no longer needed.
+19. The machine receives confirmation the registration was successful.
 
 ### How to Renew a Registration
 Once registered to a person, a device's registration's cryptographic details (keys, codes, etc...) will need to be renewed at least yearly. The app will check if a renewal is needed whenever it is opened and verified.
